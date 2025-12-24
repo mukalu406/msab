@@ -1,0 +1,2135 @@
+<?php
+// ============================================
+// MSAB WEBSITE - NO DATABASE VERSION
+// ============================================
+
+// Start session for flash messages
+session_start();
+
+// Handle Contact Form Submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
+    // Sanitize inputs
+    $name = htmlspecialchars(trim($_POST['name'] ?? ''));
+    $email = htmlspecialchars(trim($_POST['email'] ?? ''));
+    $subject = htmlspecialchars(trim($_POST['subject'] ?? ''));
+    $message = htmlspecialchars(trim($_POST['message'] ?? ''));
+    
+    // Collect IP and browser info
+    $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+    $created_at = date('Y-m-d H:i:s');
+    
+    // Validation
+    $errors = [];
+    
+    if (empty($name) || strlen($name) < 2) {
+        $errors[] = "Please enter a valid name (minimum 2 characters)";
+    }
+    
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = "Please enter a valid email address";
+    }
+    
+    if (empty($subject) || strlen($subject) < 5) {
+        $errors[] = "Subject must be at least 5 characters";
+    }
+    
+    if (empty($message) || strlen($message) < 10) {
+        $errors[] = "Message must be at least 10 characters";
+    }
+    
+    // If no errors, simulate saving (we'll use local storage in JavaScript)
+    if (empty($errors)) {
+        // For PHP-only solution, we'll just show a success message
+        $message_id = rand(100000, 999999);
+        $_SESSION['success'] = "Message sent successfully! Your reference ID: MSAB#" . $message_id;
+        
+        // Store in session for display (temporary)
+        if (!isset($_SESSION['messages'])) {
+            $_SESSION['messages'] = [];
+        }
+        
+        $_SESSION['messages'][] = [
+            'name' => $name,
+            'email' => $email,
+            'subject' => $subject,
+            'message' => $message,
+            'created_at' => $created_at
+        ];
+        
+        // Keep only last 5 messages
+        if (count($_SESSION['messages']) > 5) {
+            array_shift($_SESSION['messages']);
+        }
+        
+        // Store form data for JavaScript local storage
+        $_SESSION['last_message'] = [
+            'id' => $message_id,
+            'name' => $name,
+            'email' => $email,
+            'subject' => $subject,
+            'message' => $message,
+            'timestamp' => time()
+        ];
+        
+        // Clear form data
+        unset($_SESSION['form_data']);
+        
+        // Redirect to prevent form resubmission
+        header('Location: ' . $_SERVER['PHP_SELF'] . '#contact');
+        exit;
+        
+    } else {
+        $_SESSION['error'] = implode("<br>", $errors);
+        // Store form data for re-population
+        $_SESSION['form_data'] = [
+            'name' => $name,
+            'email' => $email,
+            'subject' => $subject,
+            'message' => $message
+        ];
+    }
+    
+    header('Location: ' . $_SERVER['PHP_SELF'] . '#contact');
+    exit;
+}
+
+// Get stored form data if exists
+$form_data = $_SESSION['form_data'] ?? [];
+unset($_SESSION['form_data']);
+
+// Get recent testimonials from session
+$recent_testimonials = $_SESSION['messages'] ?? [];
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSAB - Muslim Students Association of Busoga | Uniting Muslim Students</title>
+    <meta name="description" content="Official website of MSAB - Muslim Students Association of Busoga. Uniting Muslim students across Busoga region for spiritual growth, education, and community service.">
+    <meta name="keywords" content="MSAB, Muslim Students Association, Busoga, Muslim students, Jinja, Jipra, Islamic education, Uganda Muslim students">
+    <meta name="author" content="MSAB - Muslim Students Association of Busoga">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="MSAB - Muslim Students Association of Busoga">
+    <meta property="og:description" content="Uniting Muslim students across Busoga region for spiritual growth, education, and community service.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://msab-busoga.org">
+    <meta property="og:image" content="https://msab-busoga.org/images/msab-logo.jpg">
+    
+    <link rel="canonical" href="https://msab-busoga.org">
+    <link rel="icon" type="image/x-icon" href="https://msab-busoga.org/favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0d6e4c;
+            --primary-light: #1a936f;
+            --secondary: #ffd166;
+            --dark: #073b2c;
+            --light: #f8f9fa;
+            --text: #333333;
+            --text-light: #666666;
+            --white: #ffffff;
+            --shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background-color: var(--light);
+        }
+
+        h1, h2, h3, h4 {
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+        }
+
+        h2 {
+            font-size: 2rem;
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        h2:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 70px;
+            height: 3px;
+            background-color: var(--secondary);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+        }
+
+        p {
+            margin-bottom: 1.5rem;
+        }
+
+        .arabic-text {
+            font-family: 'Amiri', serif;
+            direction: rtl;
+            font-size: 1.3rem;
+            color: var(--primary);
+            margin: 20px 0;
+        }
+
+        .quran-verse {
+            background-color: #f0f7f4;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-right: 5px solid var(--primary);
+        }
+
+        .quran-verse .arabic-text {
+            font-size: 1.5rem;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .quran-verse .translation {
+            text-align: center;
+            color: var(--text);
+            font-style: italic;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-center h2:after {
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--primary);
+            color: var(--white);
+            padding: 12px 30px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-light);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary);
+            color: var(--dark);
+        }
+
+        .btn-secondary:hover {
+            background-color: #ffc043;
+        }
+
+        section {
+            padding: 80px 0;
+            scroll-margin-top: 80px;
+        }
+
+        .section-light {
+            background-color: var(--light);
+        }
+
+        .section-colored {
+            background-color: #f0f7f4;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-color: #bee5eb;
+        }
+
+        /* Improved Header & Navigation */
+        header {
+            background-color: var(--white);
+            box-shadow: var(--shadow);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-right: 10px;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .logo-text span {
+            color: var(--primary);
+        }
+
+        .logo-abbr {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-left: 5px;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+
+        nav ul li {
+            position: relative;
+            margin-left: 1.5rem;
+        }
+
+        nav ul li a {
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 500;
+            transition: var(--transition);
+            padding: 8px 0;
+            position: relative;
+        }
+
+        nav ul li a:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary);
+            transition: var(--transition);
+        }
+
+        nav ul li a:hover:after,
+        nav ul li a.active:after {
+            width: 100%;
+        }
+
+        nav ul li a:hover,
+        nav ul li a.active {
+            color: var(--primary);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--white);
+            min-width: 200px;
+            box-shadow: var(--shadow);
+            border-radius: 4px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: var(--transition);
+            z-index: 1000;
+        }
+
+        .dropdown-menu li {
+            margin: 0;
+            width: 100%;
+        }
+
+        .dropdown-menu a {
+            display: block;
+            padding: 12px 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .dropdown:hover .dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--primary);
+            cursor: pointer;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(rgba(13, 110, 76, 0.85), rgba(13, 110, 76, 0.9)), url('https://c8.alamy.com/comp/ACXB0X/nigeria-west-africa-kano-muslim-girls-in-a-primary-school-reading-ACXB0X.jpg');
+            background-size: cover;
+            background-position: center;
+            color: var(--white);
+            text-align: center;
+            padding: 180px 0 100px;
+            margin-top: 70px;
+        }
+
+        .hero h1 {
+            color: var(--white);
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero h1 .abbr {
+            color: var(--secondary);
+            font-weight: 800;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto 2rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* About Section */
+        .about-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+            align-items: center;
+        }
+
+        .about-image {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .about-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Executive Team Section */
+        .executive-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .executive-card {
+            background-color: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .executive-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .executive-img {
+            height: 250px;
+            overflow: hidden;
+        }
+
+        .executive-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .executive-info {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .executive-info h4 {
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .executive-position {
+            color: var(--primary-light);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        /* Events Section */
+        .events-container {
+            margin-top: 40px;
+        }
+
+        .events-timeline {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .events-timeline:before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 100%;
+            background-color: var(--primary);
+        }
+
+        .event-item {
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .event-content {
+            background-color: var(--white);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            position: relative;
+            width: 45%;
+        }
+
+        .event-item:nth-child(odd) .event-content {
+            margin-left: 55%;
+        }
+
+        .event-item:nth-child(even) .event-content {
+            margin-right: 55%;
+        }
+
+        .event-date {
+            position: absolute;
+            top: 15px;
+            width: 100px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .event-item:nth-child(odd) .event-date {
+            right: calc(55% + 30px);
+        }
+
+        .event-item:nth-child(even) .event-date {
+            left: calc(55% + 30px);
+        }
+
+        .event-content:before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            width: 20px;
+            height: 20px;
+            background-color: var(--white);
+            transform: rotate(45deg);
+        }
+
+        .event-item:nth-child(odd) .event-content:before {
+            left: -10px;
+            border-right: 2px solid var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .event-item:nth-child(even) .event-content:before {
+            right: -10px;
+            border-left: 2px solid var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .event-dot {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 15px;
+            height: 15px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            border: 3px solid var(--white);
+            box-shadow: 0 0 0 3px var(--primary);
+        }
+
+        /* Activities Section */
+        .activities-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .activity-card {
+            background-color: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .activity-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .activity-img {
+            height: 200px;
+            overflow: hidden;
+        }
+
+        .activity-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .activity-card:hover .activity-img img {
+            transform: scale(1.05);
+        }
+
+        .activity-content {
+            padding: 25px;
+        }
+
+        .activity-content h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        /* Google Form Section */
+        .google-form-container {
+            margin-top: 30px;
+        }
+
+        .form-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+
+        .form-option-btn {
+            background-color: var(--white);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 12px 25px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .form-option-btn.active, .form-option-btn:hover {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+
+        .form-frame-container {
+            background-color: var(--white);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            min-height: 600px;
+        }
+
+        .form-frame {
+            width: 100%;
+            height: 600px;
+            border: none;
+            border-radius: 4px;
+        }
+
+        .form-info {
+            background-color: #e8f5f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        /* Offices Section */
+        .offices-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .office-card {
+            background-color: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .office-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .office-header {
+            background-color: var(--primary);
+            color: var(--white);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .office-header h3 {
+            color: var(--white);
+            margin-bottom: 0;
+        }
+
+        .office-body {
+            padding: 25px;
+        }
+
+        .office-info {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .office-icon {
+            background-color: var(--primary-light);
+            color: var(--white);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        /* Testimonials Section */
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .testimonial-card {
+            background-color: var(--white);
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--primary);
+        }
+
+        .testimonial-text {
+            font-style: italic;
+            margin-bottom: 15px;
+            color: var(--text-light);
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+        }
+
+        .author-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-light);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        .author-info h4 {
+            margin-bottom: 5px;
+            font-size: 1rem;
+        }
+
+        .author-date {
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        /* Contact Section */
+        .contact-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+        }
+
+        .contact-info {
+            background-color: var(--white);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .contact-icon {
+            background-color: var(--primary-light);
+            color: var(--white);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .contact-form input,
+        .contact-form textarea,
+        .contact-form select {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .contact-form input:focus,
+        .contact-form textarea:focus,
+        .contact-form select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(13, 110, 76, 0.1);
+        }
+
+        .contact-form textarea {
+            height: 150px;
+            resize: vertical;
+        }
+
+        .form-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .required {
+            color: #e74c3c;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            background-color: #f8f9fa;
+            padding: 15px 0;
+            margin-top: 70px;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .breadcrumb ol {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            padding: 0;
+            margin: 0;
+        }
+
+        .breadcrumb li {
+            margin-right: 10px;
+        }
+
+        .breadcrumb li:after {
+            content: '/';
+            margin-left: 10px;
+            color: #666;
+        }
+
+        .breadcrumb li:last-child:after {
+            content: '';
+        }
+
+        .breadcrumb a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* Local Storage Status */
+        .storage-status {
+            background-color: #e8f5f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .storage-status i {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        /* Footer */
+        footer {
+            background-color: var(--dark);
+            color: var(--white);
+            padding: 60px 0 30px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--white);
+        }
+
+        .footer-logo span {
+            color: var(--secondary);
+        }
+
+        .footer-about p {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .footer-links h3,
+        .footer-contact h3 {
+            color: var(--white);
+            margin-bottom: 25px;
+            font-size: 1.3rem;
+        }
+
+        .footer-links ul {
+            list-style: none;
+        }
+
+        .footer-links ul li {
+            margin-bottom: 12px;
+        }
+
+        .footer-links ul li a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .footer-links ul li a:hover {
+            color: var(--secondary);
+            padding-left: 5px;
+        }
+
+        .footer-contact p {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .footer-contact i {
+            margin-right: 10px;
+            color: var(--secondary);
+        }
+
+        .social-icons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .social-icons a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            color: var(--white);
+            transition: var(--transition);
+            text-decoration: none;
+        }
+
+        .social-icons a:hover {
+            background-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .copyright {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .about-content,
+            .contact-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .events-timeline:before {
+                left: 30px;
+            }
+            
+            .event-item:nth-child(odd) .event-content,
+            .event-item:nth-child(even) .event-content {
+                width: calc(100% - 80px);
+                margin-left: 80px;
+            }
+            
+            .event-item:nth-child(odd) .event-date,
+            .event-item:nth-child(even) .event-date {
+                left: 0;
+                right: auto;
+                text-align: left;
+            }
+            
+            .event-content:before {
+                left: -10px !important;
+                right: auto !important;
+                border-right: 2px solid var(--primary) !important;
+                border-left: none !important;
+                border-bottom: 2px solid var(--primary);
+            }
+            
+            .event-dot {
+                left: 23px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            nav ul {
+                display: none;
+                position: absolute;
+                top: 70px;
+                left: 0;
+                width: 100%;
+                background-color: var(--white);
+                flex-direction: column;
+                padding: 20px;
+                box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            }
+            
+            nav ul.show {
+                display: flex;
+            }
+            
+            nav ul li {
+                margin: 0 0 15px 0;
+                width: 100%;
+            }
+            
+            .dropdown-menu {
+                position: static;
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+                box-shadow: none;
+                background-color: #f9f9f9;
+                margin-top: 10px;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .executive-grid,
+            .activities-grid,
+            .offices-container,
+            .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-options {
+                flex-direction: column;
+            }
+            
+            .form-option-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+    
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Muslim Students Association of Busoga (MSAB)",
+      "alternateName": "MSAB",
+      "url": "https://msab-busoga.org",
+      "logo": "https://msab-busoga.org/images/msab-logo.png",
+      "description": "Uniting Muslim students across Busoga region for spiritual growth, education, and community service.",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Jinja Road, Mpumudde",
+        "addressLocality": "Jinja",
+        "addressRegion": "Busoga",
+        "addressCountry": "Uganda"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "+256-744-014-448",
+        "contactType": "Customer Service",
+        "email": "info@msab-busoga.org"
+      }
+    }
+    </script>
+</head>
+<body>
+    <!-- Header with Improved Navigation -->
+    <header>
+        <div class="container header-container">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-mosque"></i>
+                </div>
+                <div class="logo-text">MSAB<span class="logo-abbr"> | Muslim Students Association of Busoga</span></div>
+            </div>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <nav>
+                <ul id="navMenu">
+                    <li><a href="#home" class="active">Home</a></li>
+                    <li class="dropdown">
+                        <a href="#about">About <i class="fas fa-chevron-down"></i></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="#about">About MSAB</a></li>
+                            <li><a href="#mission">Mission & Vision</a></li>
+                            <li><a href="#executive">Executive Team</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#activities">Activities</a></li>
+                    <li><a href="#events">Events</a></li>
+                    <li><a href="#offices">Our Offices</a></li>
+                    <li><a href="#forms">Join MSAB</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <div class="container">
+            <ol>
+                <li><a href="#home">Home</a></li>
+                <li>MSAB - Muslim Students Association of Busoga</li>
+            </ol>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="container">
+            <h1><span class="abbr">MSAB</span> - Muslim Students Association of Busoga</h1>
+            <p>Uniting Muslim students across the Busoga region for spiritual growth, education, and community service. We strive to create an environment that fosters Islamic values and academic excellence.</p>
+            <a href="#forms" class="btn btn-secondary">Join MSAB Today</a>
+            
+            <div class="quran-verse">
+                <div class="arabic-text">
+                    وَاعْتَصِمُوا بِحَبْلِ اللَّهِ جَمِيعًا وَلَا تَفَرَّقُوا
+                </div>
+                <div class="translation">
+                    "And hold firmly to the rope of Allah all together and do not become divided." (Quran 3:103)
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Local Storage Status -->
+    <div class="container">
+        <div class="storage-status" id="storageStatus">
+            <i class="fas fa-database"></i>
+            <span>Your messages are saved in your browser's local storage</span>
+        </div>
+    </div>
+
+    <!-- About Section -->
+    <section class="section-light" id="about">
+        <div class="container">
+            <h2 class="text-center">About MSAB</h2>
+            
+            <div class="quran-verse">
+                <div class="arabic-text">
+                    يَرْفَعِ اللَّهُ الَّذِينَ آمَنُوا مِنكُمْ وَالَّذِينَ أُوتُوا الْعِلْمَ دَرَجَاتٍ
+                </div>
+                <div class="translation">
+                    "Allah will raise those who have believed among you and those who were given knowledge, by degrees." (Quran 58:11)
+                </div>
+            </div>
+            
+            <div class="about-content">
+                <div class="about-text">
+                    <h3>Uniting Muslim Students in Busoga Region</h3>
+                    <p>The <strong>Muslim Students Association of Busoga (MSAB)</strong> is a regional organization dedicated to serving the needs of Muslim students across all educational institutions in the Busoga region.</p>
+                    <p>Established in 2023, our association has grown to become a vital platform for Muslim students to connect, learn, and contribute to society while maintaining strong Islamic values.</p>
+                    
+                    <div class="quran-verse">
+                        <div class="arabic-text">
+                            إِنَّمَا يَخْشَى اللَّهَ مِنْ عِبَادِهِ الْعُلَمَاءُ
+                        </div>
+                        <div class="translation">
+                            "Indeed, only those fear Allah from among His servants who have knowledge." (Quran 35:28)
+                        </div>
+                    </div>
+                    
+                    <a href="#executive" class="btn">Meet Our Executive</a>
+                </div>
+                <div class="about-image">
+                    <img src="logo.jpeg" alt="Muslim students studying together at MSAB">
+                </div>
+            </div>
+            
+            <div id="mission" style="margin-top: 60px;">
+                <h3>Our Mission & Vision</h3>
+                <div class="about-content">
+                    <div>
+                        <h4><i class="fas fa-bullseye"></i> Our Mission</h4>
+                        <p>To provide a platform for Muslim students in Busoga region to grow spiritually, intellectually, and socially while upholding Islamic values and contributing positively to society.</p>
+                    </div>
+                    <div>
+                        <h4><i class="fas fa-eye"></i> Our Vision</h4>
+                        <p>To become the leading Muslim students' association in Eastern Uganda, recognized for nurturing future leaders who excel both in religious knowledge and secular education.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Executive Team Section -->
+    <section class="section-colored" id="executive">
+        <div class="container">
+            <h2 class="text-center">MSAB Executive Team</h2>
+            <p class="text-center">Meet the dedicated team leading MSAB in serving Muslim students across Busoga region.</p>
+            
+            <div class="executive-grid">
+                <div class="executive-card">
+                    <div class="executive-img">
+                        <img src="chairperson.jpeg" alt="MSAB Chairman - Mutyabule Nasser">
+                    </div>
+                    <div class="executive-info">
+                        <h4>Mutyabule Nasser</h4>
+                        <div class="executive-position">Chairman</div>
+                        <p>Leading MSAB with vision and dedication</p>
+                    </div>
+                </div>
+                
+                <div class="executive-card">
+                    <div class="executive-img">
+                        <img src="patron.jpeg" alt="MSAB Patron - Shk Mbonde Yusuf">
+                    </div>
+                    <div class="executive-info">
+                        <h4>Shk Mbonde Yusuf</h4>
+                        <div class="executive-position">Patron</div>
+                        <p>Oversees daily operations and member relations</p>
+                    </div>
+                </div>
+                
+                <div class="executive-card">
+                    <div class="executive-img">
+                        <img src="secretary.jpeg" alt="MSAB General Secretary - Zainabu Nakawooya">
+                    </div>
+                    <div class="executive-info">
+                        <h4>Zainabu Nakawooya</h4>
+                        <div class="executive-position">General Secretary</div>
+                        <p>Manages records and communications</p>
+                    </div>
+                </div>
+                
+                <div class="executive-card">
+                    <div class="executive-img">
+                        <img src="Treasurer.jpeg" alt="MSAB Treasurer - Fatima Namugga">
+                    </div>
+                    <div class="executive-info">
+                        <h4>Fatima Namugga</h4>
+                        <div class="executive-position">Treasurer</div>
+                        <p>Handles finances and budgeting</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="quran-verse" style="margin-top: 40px;">
+                <div class="arabic-text">
+                    وَتَعَاوَنُوا عَلَى الْبِرِّ وَالتَّقْوَىٰ
+                </div>
+                <div class="translation">
+                    "And cooperate in righteousness and piety." (Quran 5:2)
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section (Dynamic from Session) -->
+    <?php if (!empty($recent_testimonials)): ?>
+    <section class="section-light" id="testimonials">
+        <div class="container">
+            <h2 class="text-center">Recent Messages</h2>
+            <p class="text-center">Recent messages sent to MSAB through our contact form.</p>
+            
+            <div class="testimonials-grid">
+                <?php foreach ($recent_testimonials as $testimonial): ?>
+                <div class="testimonial-card">
+                    <div class="testimonial-text">
+                        "<?php echo substr($testimonial['message'], 0, 150); ?><?php echo strlen($testimonial['message']) > 150 ? '...' : ''; ?>"
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">
+                            <?php echo strtoupper(substr($testimonial['name'], 0, 1)); ?>
+                        </div>
+                        <div class="author-info">
+                            <h4><?php echo htmlspecialchars($testimonial['name']); ?></h4>
+                            <div class="author-date">
+                                <?php echo date('M j, Y', strtotime($testimonial['created_at'])); ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- Events Section -->
+    <section class="section-colored" id="events">
+        <div class="container">
+            <h2 class="text-center">MSAB Events & Calendar</h2>
+            <p class="text-center">Stay updated with our upcoming events, programs, and activities throughout the academic year.</p>
+            
+            <div class="quran-verse">
+                <div class="arabic-text">
+                    وَذَكِّرْ فَإِنَّ الذِّكْرَىٰ تَنْفَعُ الْمُؤْمِنِينَ
+                </div>
+                <div class="translation">
+                    "And remind, for indeed, the reminder benefits the believers." (Quran 51:55)
+                </div>
+            </div>
+            
+            <div class="events-container">
+                <div class="events-timeline">
+                    <div class="event-item">
+                        <div class="event-dot"></div>
+                        <div class="event-date">December 21-26 every year</div>
+                        <div class="event-content">
+                            <h3>Annual MSAB Leadership Retreat</h3>
+                            <p>A 6-day residential program for MSAB leaders focusing on Islamic leadership principles, organizational management, and community building.</p>
+                            <p><strong>Venue:</strong> Jinja Progressive Academy</p>
+                            <a href="#forms" class="btn">Register Now</a>
+                        </div>
+                    </div>
+                    
+                    <div class="event-item">
+                        <div class="event-dot"></div>
+                        <div class="event-date">December 25th</div>
+                        <div class="event-content">
+                            <h3>Quran Memorization Competition</h3>
+                            <p>Annual competition for MSAB members with categories for different levels of memorization. Prizes and certificates for winners.</p>
+                            <p><strong>Time:</strong> 9:00 AM - 3:00 PM</p>
+                            <a href="#forms" class="btn">Sign Up</a>
+                        </div>
+                    </div>
+                    
+                    <div class="event-item">
+                        <div class="event-dot"></div>
+                        <div class="event-date">15th Day of every month</div>
+                        <div class="event-content">
+                            <h3>Community Service Day</h3>
+                            <p>MSAB members will visit orphanages and hospitals in Jinja and other parts of Busoga region to provide assistance and share Ramadan gifts with the less fortunate.</p>
+                            <p><strong>Meeting Point:</strong> MSAB Jinja Office</p>
+                            <a href="#forms" class="btn">Volunteer</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Activities Section -->
+    <section class="section-light" id="activities">
+        <div class="container">
+            <h2 class="text-center">MSAB Activities & Programs</h2>
+            
+            <div class="quran-verse">
+                <div class="arabic-text">
+                    قُلْ هَلْ يَسْتَوِي الَّذِينَ يَعْلَمُونَ وَالَّذِينَ لَا يَعْلَمُونَ
+                </div>
+                <div class="translation">
+                    "Say, 'Are those who know equal to those who do not know?'" (Quran 39:9)
+                </div>
+            </div>
+            
+            <div class="activities-grid">
+                <div class="activity-card">
+                    <div class="activity-img">
+                        <img src="https://photos.lensculture.com/large/8001d414-32be-41f1-863d-57a39d754f4f.jpg" alt="MSAB Islamic study circle for Muslim students">
+                    </div>
+                    <div class="activity-content">
+                        <h3>Islamic Study Circles</h3>
+                        <p>Weekly gatherings for Quranic studies, Hadith discussions, and Islamic jurisprudence lessons tailored for students at MSAB.</p>
+                    </div>
+                </div>
+                
+                <div class="activity-card">
+                    <div class="activity-img">
+                        <img src="https://ourfathershouseministries.files.wordpress.com/2020/05/5-v2.jpg" alt="MSAB community service in Busoga">
+                    </div>
+                    <div class="activity-content">
+                        <h3>Community Service</h3>
+                        <p>Regular outreach programs, charity drives, and community development initiatives across Busoga region organized by MSAB.</p>
+                    </div>
+                </div>
+                
+                <div class="activity-card">
+                    <div class="activity-img">
+                        <img src="https://pbs.twimg.com/media/FzjQGI7XwAEit4y.jpg" alt="MSAB interfaith dialogue in Jinja">
+                    </div>
+                    <div class="activity-content">
+                        <h3>Interfaith Dialogues</h3>
+                        <p>Promoting understanding and cooperation between Muslim students and other faith communities on campus and beyond through MSAB initiatives.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Offices Section -->
+    <section class="section-colored" id="offices">
+        <div class="container">
+            <h2 class="text-center">MSAB Offices in Busoga</h2>
+            <p class="text-center">MSAB operates from its main offices in the Busoga region to better serve our members across different locations.</p>
+            
+            <div class="offices-container">
+                <div class="office-card">
+                    <div class="office-header">
+                        <h3>MSAB Jinja Main Office</h3>
+                        <p>Headquarters</p>
+                    </div>
+                    <div class="office-body">
+                        <div class="office-info">
+                            <div class="office-icon">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </div>
+                            <div>
+                                <h4>Location</h4>
+                                <p>Jinja Road, Mpumudde<br>Jinja Central Division<br>Jinja City, Uganda</p>
+                            </div>
+                        </div>
+                        
+                        <div class="office-info">
+                            <div class="office-icon">
+                                <i class="fas fa-phone"></i>
+                            </div>
+                            <div>
+                                <h4>Contact</h4>
+                                <p>+256-744-014-448<br>+256 766 748288</p>
+                            </div>
+                        </div>
+                        
+                        <div class="office-info">
+                            <div class="office-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div>
+                                <h4>Office Hours</h4>
+                                <p>Monday - Friday: 8:00 AM - 6:00 PM<br>Saturday: 9:00 AM - 2:00 PM<br>Sunday: Closed</p>
+                            </div>
+                        </div>
+                        
+                        <div class="office-info">
+                            <div class="office-icon">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                            <div>
+                                <h4>Office Manager</h4>
+                                <p>Mr. Mutyabule Nasser</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Google Forms Section -->
+    <section class="section-light" id="forms">
+        <div class="container">
+            <h2 class="text-center">Join MSAB - Registration Forms</h2>
+            
+            <div class="quran-verse">
+                <div class="arabic-text">
+                    يَا أَيُّهَا الَّذِينَ آمَنُوا اسْتَجِيبُوا لِلَّهِ وَلِلرَّسُولِ إِذَا دَعَاكُمْ لِمَا يُحْيِيكُمْ
+                </div>
+                <div class="translation">
+                    "O you who have believed, respond to Allah and to the Messenger when he calls you to that which gives you life." (Quran 8:24)
+                </div>
+            </div>
+            
+            <p class="text-center">Use the forms below to register as a member, sign up for events, or provide feedback.</p>
+            
+            <div class="google-form-container">
+                <div class="form-options">
+                    <button class="form-option-btn active" data-form="membership">MSAB Membership Registration</button>
+                    <button class="form-option-btn" data-form="events">MSAB Event Registration</button>
+                    <button class="form-option-btn" data-form="feedback">Feedback & Suggestions</button>
+                    <button class="form-option-btn" data-form="volunteer">MSAB Volunteer Sign-up</button>
+                </div>
+                
+                <div class="form-frame-container">
+                    <!-- Default form - Membership Registration -->
+                    <iframe id="formFrame" class="form-frame" src="https://docs.google.com/forms/d/e/1FAIpQLSeS8gO7l_jt_-tHtxu9qK4YbxG9Wl4Kxid8vW9JQyHtJ5J5_g/viewform?embedded=true" title="MSAB Membership Registration Form" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+                </div>
+                
+                <div class="form-info">
+                    <h3><i class="fas fa-info-circle"></i> MSAB Form Information</h3>
+                    <p><strong>MSAB Membership Registration:</strong> Open to all Muslim students in Busoga region. Registration is free and provides access to all MSAB activities and resources.</p>
+                    <p><strong>Data Privacy:</strong> All information collected through these forms is kept confidential and used only for MSAB administrative purposes.</p>
+                    <p><strong>Need Help?</strong> If you experience issues with the forms, please contact our offices in Jinja or Jipra for assistance.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="section-light" id="contact">
+        <div class="container">
+            <h2 class="text-center">Contact MSAB</h2>
+            
+            <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> <?php echo $_SESSION['success']; ?>
+                    <br><small>This message has been saved to your browser's local storage.</small>
+                </div>
+                <?php unset($_SESSION['success']); ?>
+            <?php endif; ?>
+            
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-circle"></i> <?php echo $_SESSION['error']; ?>
+                </div>
+                <?php unset($_SESSION['error']); ?>
+            <?php endif; ?>
+            
+            <div class="quran-verse">
+                <div class="arabic-text">
+                    وَإِنْ أَحَدٌ مِّنَ الْمُشْرِكِينَ اسْتَجَارَكَ فَأَجِرْهُ حَتَّىٰ يَسْمَعَ كَلَامَ اللَّهِ
+                </div>
+                <div class="translation">
+                    "And if anyone from the polytheists asks for your protection, grant it to him so that he may hear the words of Allah." (Quran 9:6)
+                </div>
+            </div>
+            
+            <div class="contact-content">
+                <div class="contact-info">
+                    <h3>Get In Touch with MSAB</h3>
+                    <p>We'd love to hear from you. Reach out to MSAB through any of the following channels:</p>
+                    
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div>
+                            <h4>MSAB Main Office (Jinja)</h4>
+                            <p>Jinja Road, Mpumudde<br>Jinja Central Division, Jinja City, Uganda</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div>
+                            <h4>MSAB Branch Office (Jipra)</h4>
+                            <p>Mpumudde Trading Center, at Jipra Secondary School<br>Jinja District, Uganda along Kamuli-Jinja road</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        <div>
+                            <h4>MSAB Phone Numbers</h4>
+                            <p>Jipra Office: +256-744-014-448<br>General Inquiries: +256-744-014-448</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div>
+                            <h4>MSAB Email Addresses</h4>
+                            <p>info@msab-busoga.org<br>registrations@msab-busoga.org<br>contact@msab-busoga.org<br>msabmsab2026@gmail.com</p>
+                        </div>
+                    </div>
+                    
+                    <div class="social-icons">
+                        <a href="https://facebook.com/msab" aria-label="MSAB Facebook" target="_blank">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="https://twitter.com/msab" aria-label="MSAB Twitter" target="_blank">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="https://instagram.com/msab" aria-label="MSAB Instagram" target="_blank">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="https://wa.me/256766748288" aria-label="MSAB WhatsApp" target="_blank">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                        <a href="https://t.me/msab" aria-label="MSAB Telegram" target="_blank">
+                            <i class="fab fa-telegram"></i>
+                        </a>
+                    </div>
+                    
+                    <!-- View Saved Messages Button -->
+                    <div style="margin-top: 30px;">
+                        <button class="btn" onclick="viewSavedMessages()">
+                            <i class="fas fa-history"></i> View Your Saved Messages
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="contact-form">
+                    <h3>Send MSAB a Direct Message</h3>
+                    <form method="POST" action="">
+                        <div class="form-group">
+                            <label for="name" class="form-label">Your Name <span class="required">*</span></label>
+                            <input type="text" id="name" name="name" placeholder="Enter your full name" required 
+                                   value="<?php echo htmlspecialchars($form_data['name'] ?? ''); ?>">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email" class="form-label">Your Email <span class="required">*</span></label>
+                            <input type="email" id="email" name="email" placeholder="Enter your email address" required
+                                   value="<?php echo htmlspecialchars($form_data['email'] ?? ''); ?>">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="subject" class="form-label">Subject <span class="required">*</span></label>
+                            <input type="text" id="subject" name="subject" placeholder="Enter message subject" required
+                                   value="<?php echo htmlspecialchars($form_data['subject'] ?? ''); ?>">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="message" class="form-label">Your Message <span class="required">*</span></label>
+                            <textarea id="message" name="message" placeholder="Type your message here..." required><?php 
+                                echo htmlspecialchars($form_data['message'] ?? ''); 
+                            ?></textarea>
+                        </div>
+                        
+                        <button type="submit" name="send_message" class="btn">
+                            <i class="fas fa-paper-plane"></i> Send Message to MSAB
+                        </button>
+                    </form>
+                    
+                    <div style="margin-top: 30px; background-color: #e8f5f0; padding: 20px; border-radius: 8px;">
+                        <h4><i class="fas fa-question-circle"></i> MSAB Frequently Asked Questions</h4>
+                        <p><strong>Q: Is there a membership fee for MSAB?</strong><br>A: No, MSAB membership is completely free for all Muslim students in Busoga.</p>
+                        <p><strong>Q: Can non-students join MSAB?</strong><br>A: While our focus is students, we welcome volunteers and supporters from all backgrounds.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-about">
+                    <div class="footer-logo">MSAB<span> | Muslim Students Association of Busoga</span></div>
+                    <div class="arabic-text" style="color: rgba(255,255,255,0.8); margin: 20px 0;">
+                        إِنَّ هَٰذِهِ أُمَّتُكُمْ أُمَّةً وَاحِدَةً وَأَنَا رَبُّكُمْ فَاعْبُدُونِ
+                    </div>
+                    <p>"Indeed, this community of yours is one community, and I am your Lord, so worship Me." (Quran 21:92)</p>
+                </div>
+                
+                <div class="footer-links">
+                    <h3>Quick Navigation</h3>
+                    <ul>
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#about">About MSAB</a></li>
+                        <li><a href="#executive">Executive Team</a></li>
+                        <li><a href="#events">Events</a></li>
+                        <li><a href="#activities">Activities</a></li>
+                        <li><a href="#offices">Our Offices</a></li>
+                        <li><a href="#forms">Join MSAB</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-contact">
+                    <h3>Contact Info</h3>
+                    <p><i class="fas fa-map-marker-alt"></i> MSAB Jipra: Mpumudde Trading Center</p>
+                    <p><i class="fas fa-phone"></i> +256 744 014 448</p>
+                    <p><i class="fas fa-envelope"></i> info@msab-busoga.org</p>
+                    <p><i class="fas fa-clock"></i> Mon-Fri: 8:00 AM - 6:00 PM</p>
+                    
+                    <div class="social-icons">
+                        <a href="https://facebook.com/msab" aria-label="MSAB Facebook" target="_blank">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="https://twitter.com/msab" aria-label="MSAB Twitter" target="_blank">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="https://instagram.com/msab" aria-label="MSAB Instagram" target="_blank">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="https://wa.me/256766748288" aria-label="MSAB WhatsApp" target="_blank">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                <p>&copy; 2026 <strong>MSAB - Muslim Students Association of Busoga</strong>. All Rights Reserved.</p>
+                <p style="margin-top: 10px; font-size: 0.8rem;">
+                    <i class="fas fa-database"></i> Local Storage Enabled | 
+                    "Seeking knowledge is obligatory upon every Muslim" - Prophet Muhammad (SAW)
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal for Viewing Saved Messages -->
+    <div id="messagesModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3>Your Saved Messages</h3>
+                <button onclick="closeMessagesModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--primary);">&times;</button>
+            </div>
+            <div id="savedMessagesList"></div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button class="btn" onclick="clearLocalStorage()">
+                    <i class="fas fa-trash"></i> Clear All Messages
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const navMenu = document.getElementById('navMenu');
+        
+        mobileMenuBtn.addEventListener('click', () => {
+            navMenu.classList.toggle('show');
+            mobileMenuBtn.innerHTML = navMenu.classList.contains('show') 
+                ? '<i class="fas fa-times"></i>' 
+                : '<i class="fas fa-bars"></i>';
+        });
+        
+        // Close mobile menu when clicking on a link
+        const navLinks = document.querySelectorAll('nav ul li a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('show');
+                mobileMenuBtn.innerHTML = '<i class="fas fa-bars"></i>';
+                
+                // Update active link
+                navLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+        
+        // Google Forms integration
+        const formOptionBtns = document.querySelectorAll('.form-option-btn');
+        const formFrame = document.getElementById('formFrame');
+        
+        const formUrls = {
+            membership: "https://docs.google.com/forms/d/e/1FAIpQLSeS8gO7l_jt_-tHtxu9qK4YbxG9Wl4Kxid8vW9JQyHtJ5J5_g/viewform?embedded=true",
+            events: "https://docs.google.com/forms/d/e/1FAIpQLSfUj5R7t0C3ALXymx1tOeLJjTk2Cz3J3O7W0V8YfQNq9pX7g/viewform?embedded=true",
+            feedback: "https://docs.google.com/forms/d/e/1FAIpQLSf9qY3q4wK1X8T5Z6v7B8C9D0E1F2G3H4I5J6K7L8M9N0O1P/viewform?embedded=true",
+            volunteer: "https://docs.google.com/forms/d/e/1FAIpQLSeS8gO7l_jt_-tHtxu9qK4YbxG9Wl4Kxid8vW9JQyHtJ5J5_g/viewform?embedded=true"
+        };
+        
+        formOptionBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active class from all buttons
+                formOptionBtns.forEach(b => b.classList.remove('active'));
+                
+                // Add active class to clicked button
+                btn.classList.add('active');
+                
+                // Get form type from data attribute
+                const formType = btn.getAttribute('data-form');
+                
+                // Update iframe source
+                formFrame.src = formUrls[formType];
+                formFrame.title = "MSAB " + formType.charAt(0).toUpperCase() + formType.slice(1) + " Form";
+            });
+        });
+        
+        // Smooth scrolling with active link update
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if(targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if(targetElement) {
+                    // Update active navigation link
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Scroll to target
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 70,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Update URL
+                    history.pushState(null, null, targetId);
+                }
+            });
+        });
+        
+        // Update active link on scroll
+        window.addEventListener('scroll', () => {
+            let current = '';
+            const sections = document.querySelectorAll('section[id]');
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if(scrollY >= (sectionTop - 100)) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if(link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+        
+        // Auto-hide success message after 5 seconds
+        const successMessage = document.querySelector('.alert-success');
+        if (successMessage) {
+            setTimeout(() => {
+                successMessage.style.transition = 'opacity 0.5s';
+                successMessage.style.opacity = '0';
+                setTimeout(() => {
+                    successMessage.style.display = 'none';
+                }, 500);
+            }, 5000);
+        }
+        
+        // Form validation enhancement
+        const contactForm = document.querySelector('#contact form');
+        if (contactForm) {
+            contactForm.addEventListener('submit', function(e) {
+                const inputs = this.querySelectorAll('input[required], textarea[required]');
+                let valid = true;
+                
+                inputs.forEach(input => {
+                    if (!input.value.trim()) {
+                        input.style.borderColor = '#e74c3c';
+                        input.style.boxShadow = '0 0 0 3px rgba(231, 76, 60, 0.1)';
+                        valid = false;
+                    } else {
+                        input.style.borderColor = '#ddd';
+                        input.style.boxShadow = 'none';
+                    }
+                });
+                
+                if (!valid) {
+                    e.preventDefault();
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'alert alert-error';
+                    errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please fill in all required fields.';
+                    contactForm.prepend(errorDiv);
+                    
+                    // Remove error message after 5 seconds
+                    setTimeout(() => {
+                        errorDiv.style.transition = 'opacity 0.5s';
+                        errorDiv.style.opacity = '0';
+                        setTimeout(() => errorDiv.remove(), 500);
+                    }, 5000);
+                }
+            });
+        }
+        
+        // Local Storage Functions
+        function saveToLocalStorage(messageData) {
+            try {
+                // Get existing messages or initialize empty array
+                let messages = JSON.parse(localStorage.getItem('msab_messages')) || [];
+                
+                // Add new message with timestamp
+                messageData.timestamp = new Date().toISOString();
+                messageData.id = Date.now(); // Unique ID
+                
+                // Add to beginning of array (newest first)
+                messages.unshift(messageData);
+                
+                // Keep only last 50 messages to prevent storage issues
+                if (messages.length > 50) {
+                    messages = messages.slice(0, 50);
+                }
+                
+                // Save back to localStorage
+                localStorage.setItem('msab_messages', JSON.stringify(messages));
+                
+                // Update storage status
+                updateStorageStatus();
+                
+                console.log('Message saved to localStorage:', messageData);
+                return true;
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+                return false;
+            }
+        }
+        
+        function getMessagesFromLocalStorage() {
+            try {
+                const messages = JSON.parse(localStorage.getItem('msab_messages')) || [];
+                return messages;
+            } catch (error) {
+                console.error('Error reading from localStorage:', error);
+                return [];
+            }
+        }
+        
+        function clearLocalStorage() {
+            if (confirm('Are you sure you want to clear all saved messages?')) {
+                localStorage.removeItem('msab_messages');
+                alert('All messages have been cleared.');
+                closeMessagesModal();
+                updateStorageStatus();
+            }
+        }
+        
+        function updateStorageStatus() {
+            const messages = getMessagesFromLocalStorage();
+            const statusElement = document.getElementById('storageStatus');
+            
+            if (statusElement) {
+                if (messages.length > 0) {
+                    statusElement.innerHTML = `<i class="fas fa-database"></i>
+                        <span>${messages.length} message${messages.length === 1 ? '' : 's'} saved in your browser's local storage</span>`;
+                    statusElement.style.backgroundColor = '#d4edda';
+                    statusElement.style.color = '#155724';
+                } else {
+                    statusElement.innerHTML = `<i class="fas fa-database"></i>
+                        <span>Your messages will be saved in your browser's local storage</span>`;
+                    statusElement.style.backgroundColor = '#e8f5f0';
+                    statusElement.style.color = '#333';
+                }
+            }
+        }
+        
+        function viewSavedMessages() {
+            const messages = getMessagesFromLocalStorage();
+            const modal = document.getElementById('messagesModal');
+            const listContainer = document.getElementById('savedMessagesList');
+            
+            if (messages.length === 0) {
+                listContainer.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No messages saved yet.</p>';
+            } else {
+                let html = '<div style="display: grid; gap: 15px;">';
+                messages.forEach((msg, index) => {
+                    const date = new Date(msg.timestamp).toLocaleString();
+                    html += `
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                <strong>${msg.name}</strong>
+                                <small style="color: #666;">${date}</small>
+                            </div>
+                            <div><strong>Subject:</strong> ${msg.subject}</div>
+                            <div><strong>Message:</strong> ${msg.message}</div>
+                            <div><strong>Email:</strong> ${msg.email}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                listContainer.innerHTML = html;
+            }
+            
+            modal.style.display = 'flex';
+        }
+        
+        function closeMessagesModal() {
+            document.getElementById('messagesModal').style.display = 'none';
+        }
+        
+        // Auto-save form data to localStorage when typing
+        const formInputs = document.querySelectorAll('#contact form input, #contact form textarea');
+        formInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                const formData = {
+                    name: document.getElementById('name').value,
+                    email: document.getElementById('email').value,
+                    subject: document.getElementById('subject').value,
+                    message: document.getElementById('message').value
+                };
+                localStorage.setItem('msab_form_draft', JSON.stringify(formData));
+            });
+        });
+        
+        // Load form draft from localStorage on page load
+        window.addEventListener('load', function() {
+            // Update storage status
+            updateStorageStatus();
+            
+            // Load form draft if exists
+            try {
+                const formDraft = JSON.parse(localStorage.getItem('msab_form_draft'));
+                if (formDraft) {
+                    document.getElementById('name').value = formDraft.name || '';
+                    document.getElementById('email').value = formDraft.email || '';
+                    document.getElementById('subject').value = formDraft.subject || '';
+                    document.getElementById('message').value = formDraft.message || '';
+                }
+            } catch (error) {
+                console.error('Error loading form draft:', error);
+            }
+            
+            // Save message to localStorage if session has last_message
+            <?php if (isset($_SESSION['last_message'])): ?>
+                const messageData = <?php echo json_encode($_SESSION['last_message']); ?>;
+                saveToLocalStorage(messageData);
+                <?php unset($_SESSION['last_message']); ?>
+            <?php endif; ?>
+        });
+        
+        // Save form data when submitted
+        document.querySelector('#contact form').addEventListener('submit', function(e) {
+            // Don't prevent default - let form submit normally
+            
+            // Get form data
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                subject: document.getElementById('subject').value,
+                message: document.getElementById('message').value,
+                timestamp: new Date().toISOString(),
+                id: Date.now()
+            };
+            
+            // Save to localStorage
+            saveToLocalStorage(formData);
+            
+            // Clear form draft
+            localStorage.removeItem('msab_form_draft');
+        });
+        
+        // Close modal when clicking outside
+        document.getElementById('messagesModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeMessagesModal();
+            }
+        });
+        
+        // Add loading indicator for Google Forms
+        formFrame.addEventListener('load', function() {
+            this.style.opacity = '1';
+        });
+        
+        formFrame.addEventListener('loadstart', function() {
+            this.style.opacity = '0.5';
+        });
+    </script>
+</body>
+</html>
